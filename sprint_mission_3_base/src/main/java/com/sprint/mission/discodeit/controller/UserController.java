@@ -1,6 +1,6 @@
 package com.sprint.mission.discodeit.controller;
 
-
+import com.sprint.mission.discodeit.controller.api.UserApi;
 import com.sprint.mission.discodeit.dto.data.UserDto;
 import com.sprint.mission.discodeit.dto.request.BinaryContentCreateRequest;
 import com.sprint.mission.discodeit.dto.request.UserCreateRequest;
@@ -10,8 +10,6 @@ import com.sprint.mission.discodeit.entity.User;
 import com.sprint.mission.discodeit.entity.UserStatus;
 import com.sprint.mission.discodeit.service.UserService;
 import com.sprint.mission.discodeit.service.UserStatusService;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Encoding;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,37 +25,30 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/users")
-public class UserController {
+public class UserController implements UserApi {
 
   private final UserService userService;
   private final UserStatusService userStatusService;
 
-  @io.swagger.v3.oas.annotations.parameters.RequestBody(
-      content = @Content(encoding = @Encoding(name = "userCreateRequest", contentType = MediaType.APPLICATION_JSON_VALUE))
-  )
-  @PostMapping(
-      consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}
-  )
-  public ResponseEntity<UserDto> create(
+  @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+  @Override
+  public ResponseEntity<User> create(
       @RequestPart("userCreateRequest") UserCreateRequest userCreateRequest,
       @RequestPart(value = "profile", required = false) MultipartFile profile
   ) {
     Optional<BinaryContentCreateRequest> profileRequest = Optional.ofNullable(profile)
         .flatMap(this::resolveProfileRequest);
     User createdUser = userService.create(userCreateRequest, profileRequest);
-    UserDto userDto = userService.find(createdUser.getId());
     return ResponseEntity
         .status(HttpStatus.CREATED)
-        .body(userDto);
+        .body(createdUser);
   }
 
-  @io.swagger.v3.oas.annotations.parameters.RequestBody(
-      content = @Content(encoding = @Encoding(name = "userUpdateRequest", contentType = MediaType.APPLICATION_JSON_VALUE))
-  )
   @PatchMapping(
-      value = "/{userId}",
+      path = "{userId}",
       consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}
   )
+  @Override
   public ResponseEntity<User> update(
       @PathVariable("userId") UUID userId,
       @RequestPart("userUpdateRequest") UserUpdateRequest userUpdateRequest,
@@ -71,7 +62,8 @@ public class UserController {
         .body(updatedUser);
   }
 
-  @DeleteMapping("/{userId}")
+  @DeleteMapping(path = "{userId}")
+  @Override
   public ResponseEntity<Void> delete(@PathVariable("userId") UUID userId) {
     userService.delete(userId);
     return ResponseEntity
@@ -79,7 +71,8 @@ public class UserController {
         .build();
   }
 
-  @GetMapping()
+  @GetMapping
+  @Override
   public ResponseEntity<List<UserDto>> findAll() {
     List<UserDto> users = userService.findAll();
     return ResponseEntity
@@ -87,7 +80,8 @@ public class UserController {
         .body(users);
   }
 
-  @PatchMapping("/{userId}/userStatus")
+  @PatchMapping(path = "{userId}/userStatus")
+  @Override
   public ResponseEntity<UserStatus> updateUserStatusByUserId(@PathVariable("userId") UUID userId,
       @RequestBody UserStatusUpdateRequest request) {
     UserStatus updatedUserStatus = userStatusService.updateByUserId(userId, request);
